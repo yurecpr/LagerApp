@@ -1,7 +1,8 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Search, ScanLine, MapPin, Package, BarChart3, Warehouse } from 'lucide-react'
+import { Search, ScanLine, MapPin, Package, BarChart3, Warehouse, Sun, Moon } from 'lucide-react'
+import { useTheme } from './ThemeProvider'
 
 const nav = [
   { href: '/', icon: Search, label: 'Пошук' },
@@ -13,6 +14,7 @@ const nav = [
 
 export default function Sidebar() {
   const pathname = usePathname()
+  const { theme, toggle } = useTheme()
   return (
     <aside className="hidden md:flex flex-col w-56 min-h-screen bg-sidebar border-r border-sidebar-border shrink-0">
       <div className="flex items-center gap-2 px-4 py-5 border-b border-sidebar-border">
@@ -32,8 +34,11 @@ export default function Sidebar() {
           )
         })}
       </nav>
-      <div className="p-4 border-t border-sidebar-border">
-        <p className="text-xs text-muted-foreground">Складський облік v1.0</p>
+      <div className="p-4 border-t border-sidebar-border flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">LagerApp v1.0</p>
+        <button onClick={toggle} className="text-sidebar-foreground hover:text-primary transition-colors p-1 rounded">
+          {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+        </button>
       </div>
     </aside>
   )

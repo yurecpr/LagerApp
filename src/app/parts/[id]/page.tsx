@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ArrowLeft, Plus, Package, ArrowDownCircle, ArrowUpCircle, ExternalLink } from 'lucide-react'
+import { ArrowLeft, Plus, Package, ArrowDownCircle, ArrowUpCircle, ExternalLink, Pencil } from 'lucide-react'
 import pb from '@/lib/pocketbase'
 import Link from 'next/link'
 import TransactionDialog from '@/components/TransactionDialog'
@@ -47,6 +47,9 @@ export default function PartDetailPage() {
       <div className="flex items-center gap-3 pt-4">
         <Link href="/parts"><ArrowLeft size={20} /></Link>
         <h1 className="text-xl font-bold flex-1 truncate">{part.name}</h1>
+        <Link href={`/parts/${id}/edit`}>
+          <Button size="sm" variant="outline"><Pencil size={14} className="mr-1" />Редагувати</Button>
+        </Link>
         <Badge variant={part.category === 'radio' ? 'default' : 'secondary'}>
           {part.category === 'radio' ? 'Радіо' : 'Авто'}
         </Badge>
@@ -80,7 +83,23 @@ export default function PartDetailPage() {
         </div>
       )}
 
-      {part.description && <p className="text-sm">{part.description}</p>}
+      {(part.description || part.notes) && (
+        <div className="border rounded-xl p-4 space-y-2 text-sm">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Додатково</p>
+          {part.description && (
+            <div>
+              <span className="text-muted-foreground text-xs">Опис</span>
+              <p className="mt-0.5">{part.description}</p>
+            </div>
+          )}
+          {part.notes && (
+            <div>
+              <span className="text-muted-foreground text-xs">Нотатки</span>
+              <p className="mt-0.5 text-muted-foreground">{part.notes}</p>
+            </div>
+          )}
+        </div>
+      )}
 
       <Tabs defaultValue="cells">
         <TabsList className="w-full">
