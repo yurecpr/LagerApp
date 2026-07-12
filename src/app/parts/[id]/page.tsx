@@ -55,14 +55,14 @@ export default function PartDetailPage() {
         </Badge>
       </div>
 
-      <div className="flex gap-4">
+      <div className="flex gap-4 items-start">
         {part.photo && (
           <img src={`${process.env.NEXT_PUBLIC_POCKETBASE_URL}/api/files/${part.collectionId}/${part.id}/${part.photo}`}
-            alt={part.name} className="w-24 h-24 rounded-xl object-cover shrink-0" />
+            alt={part.name} className="w-40 h-40 rounded-xl object-cover shrink-0" />
         )}
-        <div className="border rounded-xl p-4 text-center flex-1">
-          <div className="text-4xl font-bold">{totalQty}</div>
-          <div className="text-muted-foreground text-sm">{part.unit || 'шт'} загалом</div>
+        <div className="border rounded-xl p-3 text-center flex-1">
+          <div className="text-5xl font-bold">{totalQty}</div>
+          <div className="text-muted-foreground text-xs mt-1">{part.unit || 'шт'}</div>
         </div>
       </div>
 
