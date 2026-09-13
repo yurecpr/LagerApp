@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Search, ScanLine, MapPin, Package, BarChart3, Warehouse, Sun, Moon } from 'lucide-react'
 import { useTheme } from './ThemeProvider'
+import { useLanguage } from '@/lib/i18n'
 
 const nav = [
   { href: '/', icon: Search, label: 'Пошук' },
@@ -15,6 +16,7 @@ const nav = [
 export default function Sidebar() {
   const pathname = usePathname()
   const { theme, toggle } = useTheme()
+  const { t } = useLanguage()
   return (
     <aside className="hidden md:flex flex-col w-56 min-h-screen bg-sidebar border-r border-sidebar-border shrink-0">
       <div className="flex items-center gap-2 px-4 py-5 border-b border-sidebar-border">
@@ -29,7 +31,7 @@ export default function Sidebar() {
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
                 ${active ? 'bg-primary text-primary-foreground' : 'text-sidebar-foreground hover:bg-sidebar-accent'}`}>
               <Icon size={18} />
-              {label}
+              {t(label)}
             </Link>
           )
         })}

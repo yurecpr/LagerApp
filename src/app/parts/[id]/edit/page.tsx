@@ -9,12 +9,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import pb from '@/lib/pocketbase'
 import { ArrowLeft, Camera, X } from 'lucide-react'
 import Link from 'next/link'
+import PartPhoto from '@/components/PartPhoto'
+import { errorMessage } from '@/lib/movements'
+import { useAuth } from '@/components/AuthProvider'
+import { useLanguage } from '@/lib/i18n'
 
 type Part = {
   id: string; name: string; article: string; part_type: string; category: string
   value: string; package: string; manufacturer: string; barcode: string
   datasheet_url: string; unit: string; description: string; notes: string
-  photo: string; collectionId: string
+  photo: string; collectionId: string; min_qty: number
 }
 
 const FIELD = ({ label, children }: { label: string; children: React.ReactNode }) => (
@@ -22,9 +26,12 @@ const FIELD = ({ label, children }: { label: string; children: React.ReactNode }
 )
 
 export default function EditPartPage() {
+  const { user } = useAuth()
+  const { t } = useLanguage()
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
   const [part, setPart] = useState<Part | null>(null)
   const [form, setForm] = useState({
     name: '', article: '', part_type: '', category: 'radio', value: '',
@@ -34,6 +41,7 @@ export default function EditPartPage() {
   const [newPhoto, setNewPhoto] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [removePhoto, setRemovePhoto] = useState(false)
+  const [minQty, setMinQty] = useState('0')
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -46,6 +54,7 @@ export default function EditPartPage() {
         datasheet_url: p.datasheet_url || '', unit: p.unit || 'шт',
         description: p.description || '', notes: p.notes || '',
       })
+      setMinQty(String(p.min_qty || 0))
     }).catch(() => router.push('/parts'))
   }, [id, router])
 
@@ -62,61 +71,61 @@ export default function EditPartPage() {
 
   const save = async () => {
     if (!form.name.trim()) return
+    if (user?.role === 'admin' && (!minQty.trim() || !Number.isFinite(Number(minQty)) || Number(minQty) < 0)) { setError(t('Поріг «Мало» має бути невід’ємним числом.')); return }
     setSaving(true)
     try {
       const data = new FormData()
       Object.entries(form).forEach(([k, v]) => data.append(k, v))
+      if (user?.role === 'admin') data.append('min_qty', minQty || '0')
       if (newPhoto) data.append('photo', newPhoto)
       if (removePhoto) data.append('photo', '')
       await pb.collection('parts').update(id, data)
       router.push(`/parts/${id}`)
-    } catch (e) { console.error(e) }
+    } catch (e) { setError(t(errorMessage(e))) }
     setSaving(false)
   }
 
-  if (!part) return <div className="p-4 pt-8 text-center text-muted-foreground">Завантаження...</div>
+  if (!part) return <div className="p-4 pt-8 text-center text-muted-foreground">{t('Завантаження...')}</div>
 
-  const currentPhotoUrl = part.photo && !removePhoto
-    ? `${process.env.NEXT_PUBLIC_POCKETBASE_URL}/api/files/${part.collectionId}/${part.id}/${part.photo}`
-    : null
+  const hasCurrentPhoto = !!part.photo && !removePhoto
 
   return (
     <div className="p-4 space-y-4 max-w-2xl mx-auto">
       <div className="flex items-center gap-3 pt-4">
         <Link href={`/parts/${id}`}><ArrowLeft size={20} /></Link>
-        <h1 className="text-xl font-bold">Редагування</h1>
+        <h1 className="text-xl font-bold">{t('Редагування')}</h1>
       </div>
 
       <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onPhoto} />
-      {preview || currentPhotoUrl ? (
+      {preview || hasCurrentPhoto ? (
         <div className="relative w-28 h-28">
-          <img src={preview || currentPhotoUrl!} alt="" className="w-28 h-28 rounded-xl object-cover" />
+          {preview ? <img src={preview} alt="" className="w-28 h-28 rounded-xl object-cover" /> : <PartPhoto part={part} className="w-28 h-28 rounded-xl object-cover" />}
           <button onClick={() => { setNewPhoto(null); setPreview(null); setRemovePhoto(true) }}
             className="absolute -top-2 -right-2 bg-destructive text-white rounded-full p-0.5"><X size={14} /></button>
         </div>
       ) : (
         <button onClick={() => fileRef.current?.click()}
           className="flex items-center gap-2 border border-dashed rounded-xl p-4 text-muted-foreground hover:text-foreground w-full transition-colors">
-          <Camera size={20} /><span className="text-sm">Додати фото</span>
+          <Camera size={20} /><span className="text-sm">{t('Додати фото')}</span>
         </button>
       )}
 
       <div className="border rounded-xl p-4 space-y-3">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Основне</p>
-        <FIELD label="Назва *"><Input value={form.name} onChange={set('name')} /></FIELD>
-        <FIELD label="Тип деталі"><Input placeholder="Резистор / Датчик / Блок ABS..." value={form.part_type} onChange={set('part_type')} /></FIELD>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('Основне')}</p>
+        <FIELD label={t('Назва *')}><Input value={form.name} onChange={set('name')} /></FIELD>
+        <FIELD label={t('Тип деталі')}><Input placeholder={t('Резистор / Датчик / Блок ABS...')} value={form.part_type} onChange={set('part_type')} /></FIELD>
         <div className="grid grid-cols-2 gap-3">
-          <FIELD label="Категорія">
-            <Select value={form.category} onValueChange={v => setForm(p => ({ ...p, category: v }))}>
+          <FIELD label={t('Категорія')}>
+            <Select value={form.category} onValueChange={v => v && setForm(p => ({ ...p, category: v }))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="radio">Радіодеталі</SelectItem>
-                <SelectItem value="auto">Автозапчастини</SelectItem>
+                <SelectItem value="radio">{t('Радіодеталі')}</SelectItem>
+                <SelectItem value="auto">{t('Автозапчастини')}</SelectItem>
               </SelectContent>
             </Select>
           </FIELD>
-          <FIELD label="Одиниця">
-            <Select value={form.unit} onValueChange={v => setForm(p => ({ ...p, unit: v }))}>
+          <FIELD label={t('Одиниця')}>
+            <Select value={form.unit} onValueChange={v => v && setForm(p => ({ ...p, unit: v }))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {['шт','м','кг','г','л','пара'].map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
@@ -124,28 +133,30 @@ export default function EditPartPage() {
             </Select>
           </FIELD>
         </div>
-        <FIELD label="Артикул"><Input value={form.article} onChange={set('article')} /></FIELD>
+        <FIELD label={t('Артикул')}><Input value={form.article} onChange={set('article')} /></FIELD>
       </div>
 
       <div className="border rounded-xl p-4 space-y-3">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Технічні параметри</p>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('Технічні параметри')}</p>
         <div className="grid grid-cols-2 gap-3">
-          <FIELD label="Номінал/Значення"><Input placeholder="10кОм, 100нФ..." value={form.value} onChange={set('value')} /></FIELD>
-          <FIELD label="Корпус"><Input placeholder="0805, TO-92..." value={form.package} onChange={set('package')} /></FIELD>
+          <FIELD label={t('Номінал/Значення')}><Input placeholder="10кОм, 100нФ..." value={form.value} onChange={set('value')} /></FIELD>
+          <FIELD label={t('Корпус')}><Input placeholder="0805, TO-92..." value={form.package} onChange={set('package')} /></FIELD>
         </div>
-        <FIELD label="Виробник"><Input value={form.manufacturer} onChange={set('manufacturer')} /></FIELD>
-        <FIELD label="Штрихкод (EAN)"><Input value={form.barcode} onChange={set('barcode')} /></FIELD>
+        <FIELD label={t('Виробник')}><Input value={form.manufacturer} onChange={set('manufacturer')} /></FIELD>
+        <FIELD label={t('Штрихкод (EAN)')}><Input value={form.barcode} onChange={set('barcode')} /></FIELD>
         <FIELD label="Datasheet URL"><Input placeholder="https://..." value={form.datasheet_url} onChange={set('datasheet_url')} /></FIELD>
       </div>
 
       <div className="border rounded-xl p-4 space-y-3">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Додатково</p>
-        <FIELD label="Опис"><Textarea value={form.description} onChange={set('description')} /></FIELD>
-        <FIELD label="Нотатки"><Textarea value={form.notes} onChange={set('notes')} /></FIELD>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('Додатково')}</p>
+        <FIELD label={t('Опис')}><Textarea value={form.description} onChange={set('description')} /></FIELD>
+        <FIELD label={t('Нотатки')}><Textarea value={form.notes} onChange={set('notes')} /></FIELD>
+        {user?.role === 'admin' && <FIELD label={t('Поріг «Мало» ({unit})', { unit: form.unit })}><Input type="number" min="0" step="any" value={minQty} onChange={e => setMinQty(e.target.value)} /><p className="text-xs text-muted-foreground mt-1">{t('0 — не контролювати малий залишок')}</p></FIELD>}
       </div>
 
+      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
       <Button className="w-full h-12 text-base" onClick={save} disabled={saving || !form.name.trim()}>
-        {saving ? 'Збереження...' : 'Зберегти зміни'}
+        {saving ? t('Збереження...') : t('Зберегти зміни')}
       </Button>
     </div>
   )

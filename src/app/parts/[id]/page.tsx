@@ -8,18 +8,24 @@ import { ArrowLeft, Plus, Package, ArrowDownCircle, ArrowUpCircle, ExternalLink,
 import pb from '@/lib/pocketbase'
 import Link from 'next/link'
 import TransactionDialog from '@/components/TransactionDialog'
+import { useAuth } from '@/components/AuthProvider'
+import DeleteCatalogButton from '@/components/DeleteCatalogButton'
+import PartPhoto from '@/components/PartPhoto'
+import { useLanguage } from '@/lib/i18n'
 
 type Part = {
   id: string; name: string; article: string; category: string
   part_type: string; value: string; package: string; manufacturer: string
   barcode: string; datasheet_url: string; unit: string
-  description: string; notes: string; photo: string; collectionId: string
+  description: string; notes: string; photo: string; collectionId: string; min_qty: number
 }
 type Inventory = { id: string; qty: number; expand: { location_id: { id: string; name: string } } }
-type Tx = { id: string; type: string; qty: number; date: string; notes: string; expand: { location_id: { name: string } } }
-type DialogState = { type: 'incoming' | 'outgoing'; invId: string; locId: string; locName: string; currentQty: number } | null
+type Tx = { id: string; type: string; qty: number; date: string; notes: string; actor_name: string; expand: { location_id: { name: string } } }
+type DialogState = { type: 'incoming' | 'outgoing' | 'adjustment'; invId: string; locId: string; locName: string; currentQty: number } | null
 
 export default function PartDetailPage() {
+  const { user } = useAuth()
+  const { t, locale } = useLanguage()
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const [part, setPart] = useState<Part | null>(null)
@@ -33,32 +39,32 @@ export default function PartDetailPage() {
       filter: `part_id = "${id}"`, expand: 'location_id', requestKey: null,
     }).then(r => setInventory(r.items)).catch(() => {})
     pb.collection('transactions').getList<Tx>(1, 100, {
-      filter: `part_id = "${id}"`, expand: 'location_id', requestKey: null,
-    }).then(r => setTxs(r.items.reverse())).catch(() => {})
+      filter: `part_id = "${id}"`, expand: 'location_id', sort: '-date,-id', requestKey: null,
+    }).then(r => setTxs(r.items)).catch(() => {})
   }, [id, router])
 
   useEffect(() => { load() }, [load])
 
   const totalQty = inventory.reduce((s, i) => s + i.qty, 0)
-  if (!part) return <div className="p-4 pt-8 text-center text-muted-foreground">Завантаження...</div>
+  if (!part) return <div className="p-4 pt-8 text-center text-muted-foreground">{t('Завантаження...')}</div>
 
   return (
     <div className="p-4 space-y-4 max-w-2xl mx-auto">
       <div className="flex items-center gap-3 pt-4">
         <Link href="/parts"><ArrowLeft size={20} /></Link>
         <h1 className="text-xl font-bold flex-1 truncate">{part.name}</h1>
+        <DeleteCatalogButton collection="parts" id={id} name={part.name} />
         <Link href={`/parts/${id}/edit`}>
-          <Button size="sm" variant="outline"><Pencil size={14} className="mr-1" />Редагувати</Button>
+          <Button size="sm" variant="outline"><Pencil size={14} className="mr-1" />{t('Редагувати')}</Button>
         </Link>
         <Badge variant={part.category === 'radio' ? 'default' : 'secondary'}>
-          {part.category === 'radio' ? 'Радіо' : 'Авто'}
+          {part.category === 'radio' ? t('Радіо') : t('Авто')}
         </Badge>
       </div>
 
       <div className="flex gap-4 items-start">
         {part.photo && (
-          <img src={`${process.env.NEXT_PUBLIC_POCKETBASE_URL}/api/files/${part.collectionId}/${part.id}/${part.photo}`}
-            alt={part.name} className="w-40 h-40 rounded-xl object-cover shrink-0" />
+          <PartPhoto part={part} alt={part.name} className="w-40 h-40 rounded-xl object-cover shrink-0" />
         )}
         <div className="border rounded-xl p-3 text-center flex-1">
           <div className="text-5xl font-bold">{totalQty}</div>
@@ -66,15 +72,16 @@ export default function PartDetailPage() {
         </div>
       </div>
 
-      {part.article && <div className="text-sm text-muted-foreground">Артикул: <span className="font-mono text-foreground">{part.article}</span></div>}
+      {part.article && <div className="text-sm text-muted-foreground">{t('Артикул')}: <span className="font-mono text-foreground">{part.article}</span></div>}
+      {part.min_qty > 0 && <div className={`text-sm border rounded-xl px-4 py-3 ${totalQty <= part.min_qty ? 'border-orange-500 text-orange-600' : ''}`}>{t('Поріг «Мало»:')} <span className="font-bold">{part.min_qty} {part.unit || 'шт'}</span></div>}
 
       {(part.part_type || part.value || part.package || part.manufacturer || part.barcode) && (
         <div className="border rounded-xl p-4 space-y-2 text-sm">
-          {part.part_type && <div className="flex justify-between"><span className="text-muted-foreground">Тип</span><span>{part.part_type}</span></div>}
-          {part.value && <div className="flex justify-between"><span className="text-muted-foreground">Номінал</span><span className="font-mono">{part.value}</span></div>}
-          {part.package && <div className="flex justify-between"><span className="text-muted-foreground">Корпус</span><span className="font-mono">{part.package}</span></div>}
-          {part.manufacturer && <div className="flex justify-between"><span className="text-muted-foreground">Виробник</span><span>{part.manufacturer}</span></div>}
-          {part.barcode && <div className="flex justify-between"><span className="text-muted-foreground">Штрихкод</span><span className="font-mono">{part.barcode}</span></div>}
+          {part.part_type && <div className="flex justify-between"><span className="text-muted-foreground">{t('Тип')}</span><span>{part.part_type}</span></div>}
+          {part.value && <div className="flex justify-between"><span className="text-muted-foreground">{t('Номінал')}</span><span className="font-mono">{part.value}</span></div>}
+          {part.package && <div className="flex justify-between"><span className="text-muted-foreground">{t('Корпус')}</span><span className="font-mono">{part.package}</span></div>}
+          {part.manufacturer && <div className="flex justify-between"><span className="text-muted-foreground">{t('Виробник')}</span><span>{part.manufacturer}</span></div>}
+          {part.barcode && <div className="flex justify-between"><span className="text-muted-foreground">{t('Штрихкод')}</span><span className="font-mono">{part.barcode}</span></div>}
           {part.datasheet_url && (
             <a href={part.datasheet_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-primary hover:underline">
               <ExternalLink size={14} />Datasheet
@@ -85,16 +92,16 @@ export default function PartDetailPage() {
 
       {(part.description || part.notes) && (
         <div className="border rounded-xl p-4 space-y-2 text-sm">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Додатково</p>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('Додатково')}</p>
           {part.description && (
             <div>
-              <span className="text-muted-foreground text-xs">Опис</span>
+              <span className="text-muted-foreground text-xs">{t('Опис')}</span>
               <p className="mt-0.5">{part.description}</p>
             </div>
           )}
           {part.notes && (
             <div>
-              <span className="text-muted-foreground text-xs">Нотатки</span>
+              <span className="text-muted-foreground text-xs">{t('Нотатки')}</span>
               <p className="mt-0.5 text-muted-foreground">{part.notes}</p>
             </div>
           )}
@@ -103,16 +110,16 @@ export default function PartDetailPage() {
 
       <Tabs defaultValue="cells">
         <TabsList className="w-full">
-          <TabsTrigger value="cells" className="flex-1">Комірки ({inventory.length})</TabsTrigger>
-          <TabsTrigger value="history" className="flex-1">Журнал ({txs.length})</TabsTrigger>
+          <TabsTrigger value="cells" className="flex-1">{t('Комірки ({count})', { count: inventory.length })}</TabsTrigger>
+          <TabsTrigger value="history" className="flex-1">{t('Журнал ({count})', { count: txs.length })}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="cells" className="space-y-2 mt-3">
           <Link href={`/parts/${id}/add-location`}>
-            <Button className="w-full" variant="outline"><Plus size={16} className="mr-2" />Додати до комірки</Button>
+            <Button className="w-full" variant="outline"><Plus size={16} className="mr-2" />{t('Додати до комірки')}</Button>
           </Link>
           {inventory.length === 0 ? (
-            <p className="text-muted-foreground text-sm text-center py-4">Не розміщено в комірках</p>
+            <p className="text-muted-foreground text-sm text-center py-4">{t('Не розміщено в комірках')}</p>
           ) : inventory.map(inv => (
             <div key={inv.id} className="border rounded-xl p-4 flex items-center gap-3">
               <Package size={16} className="text-muted-foreground shrink-0" />
@@ -120,14 +127,15 @@ export default function PartDetailPage() {
                 <div className="font-mono font-medium">{inv.expand?.location_id?.name}</div>
                 <div className="text-sm text-muted-foreground">{inv.qty} {part.unit || 'шт'}</div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap justify-end gap-2">
+                {user?.role === 'admin' && <Button size="sm" variant="outline" onClick={() => setDialog({ type: 'adjustment', invId: inv.id, locId: inv.expand.location_id.id, locName: inv.expand.location_id.name, currentQty: inv.qty })}>{t('Коригувати')}</Button>}
                 <Button size="sm" variant="outline" className="gap-1 text-red-500 border-red-500/30 hover:bg-red-500/10"
                   onClick={() => setDialog({ type: 'outgoing', invId: inv.id, locId: inv.expand?.location_id?.id, locName: inv.expand?.location_id?.name, currentQty: inv.qty })}>
-                  <ArrowUpCircle size={14} />Видати
+                  <ArrowUpCircle size={14} />{t('Видати')}
                 </Button>
                 <Button size="sm" variant="outline" className="gap-1 text-green-500 border-green-500/30 hover:bg-green-500/10"
                   onClick={() => setDialog({ type: 'incoming', invId: inv.id, locId: inv.expand?.location_id?.id, locName: inv.expand?.location_id?.name, currentQty: inv.qty })}>
-                  <ArrowDownCircle size={14} />Прийняти
+                  <ArrowDownCircle size={14} />{t('Прийняти')}
                 </Button>
               </div>
             </div>
@@ -136,7 +144,7 @@ export default function PartDetailPage() {
 
         <TabsContent value="history" className="space-y-2 mt-3">
           {txs.length === 0 ? (
-            <p className="text-muted-foreground text-sm text-center py-4">Рухів немає</p>
+            <p className="text-muted-foreground text-sm text-center py-4">{t('Рухів немає')}</p>
           ) : txs.map(tx => (
             <div key={tx.id} className="border rounded-xl p-3 flex items-center gap-3">
               {tx.type === 'incoming'
@@ -145,10 +153,11 @@ export default function PartDetailPage() {
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-mono text-muted-foreground truncate">{tx.expand?.location_id?.name || '—'}</div>
                 {tx.notes && <div className="text-xs text-muted-foreground truncate">{tx.notes}</div>}
-                <div className="text-xs text-muted-foreground">{tx.date ? new Date(tx.date.replace(' ', 'T')).toLocaleString('uk-UA') : ''}</div>
+                <div className="text-xs text-muted-foreground">{tx.actor_name || t('До впровадження облікових записів')}</div>
+                <div className="text-xs text-muted-foreground">{tx.date ? new Date(tx.date.replace(' ', 'T')).toLocaleString(locale) : ''}</div>
               </div>
               <span className={`font-bold text-lg ${tx.type === 'incoming' ? 'text-green-500' : 'text-red-500'}`}>
-                {tx.type === 'incoming' ? '+' : '-'}{tx.qty}
+                {tx.type === 'adjustment' ? '= ' : tx.type === 'incoming' ? '+' : '-'}{tx.qty}
               </span>
             </div>
           ))}
@@ -166,6 +175,7 @@ export default function PartDetailPage() {
           locationName={dialog.locName}
           currentQty={dialog.currentQty}
           inventoryId={dialog.invId}
+          unit={part.unit || 'шт'}
         />
       )}
     </div>

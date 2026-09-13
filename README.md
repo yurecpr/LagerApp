@@ -1,4 +1,7 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+SpeedLabor — складський облік на Next.js і PocketBase.
+
+Інструкція оновлення, створення адміністратора, права працівників і перевірки:
+[Доступи та запуск PocketBase](pocketbase/README.md).
 
 ## Getting Started
 

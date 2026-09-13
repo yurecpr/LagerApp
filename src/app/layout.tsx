@@ -1,28 +1,21 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
-import BottomNav from "@/components/BottomNav";
-import Sidebar from "@/components/Sidebar";
+import AuthProvider from "@/components/AuthProvider";
 import { ThemeProvider } from "@/components/ThemeProvider";
-
-const inter = Inter({ subsets: ["latin", "cyrillic"] });
+import { LanguageProvider } from "@/lib/i18n";
 
 export const metadata: Metadata = {
-  title: "LagerApp — Склад",
-  description: "Складський облік радіодеталей та автозапчастин",
+  title: "SpeedLabor — LagerApp",
+  description: "Warehouse inventory / Складський облік",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="uk" className="h-full antialiased">
-      <body className={`${inter.className} min-h-full flex bg-background text-foreground`}>
-        <ThemeProvider>
-          <Sidebar />
-          <div className="flex flex-col flex-1 min-w-0">
-            <main className="flex-1 pb-20 md:pb-0">{children}</main>
-            <BottomNav />
-          </div>
-        </ThemeProvider>
+      <body className="min-h-full flex bg-background text-foreground font-sans">
+        <LanguageProvider>
+          <ThemeProvider><AuthProvider>{children}</AuthProvider></ThemeProvider>
+        </LanguageProvider>
       </body>
     </html>
   );

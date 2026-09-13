@@ -5,11 +5,13 @@ import { Badge } from '@/components/ui/badge'
 import { Search, Package, MapPin, ScanLine } from 'lucide-react'
 import pb from '@/lib/pocketbase'
 import Link from 'next/link'
+import { useLanguage } from '@/lib/i18n'
 
 type Part = { id: string; name: string; article: string; category: string }
 type Inventory = { id: string; expand: { part_id: Part; location_id: { name: string } }; qty: number }
 
 export default function HomePage() {
+  const { t } = useLanguage()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Inventory[]>([])
   const [loading, setLoading] = useState(false)
@@ -38,21 +40,21 @@ export default function HomePage() {
     <div className="p-4 space-y-4">
       <div className="pt-4">
         <h1 className="text-2xl font-bold mb-1">🏭 LagerApp</h1>
-        <p className="text-muted-foreground text-sm">Складський облік</p>
+        <p className="text-muted-foreground text-sm">{t('Складський облік')}</p>
       </div>
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
         <Input
           className="pl-10 h-12 text-base"
-          placeholder="Пошук за назвою або артикулом..."
+          placeholder={t('Пошук за назвою або артикулом...')}
           value={query}
           onChange={e => setQuery(e.target.value)}
           autoFocus
         />
       </div>
 
-      {loading && <p className="text-center text-muted-foreground text-sm">Пошук...</p>}
+      {loading && <p className="text-center text-muted-foreground text-sm">{t('Пошук...')}</p>}
 
       {results.length > 0 && (
         <div className="space-y-2">
@@ -75,7 +77,7 @@ export default function HomePage() {
                   <div className="text-xs text-muted-foreground">шт</div>
                 </div>
                 <Badge variant={inv.expand?.part_id?.category === 'radio' ? 'default' : 'secondary'} className="text-xs">
-                  {inv.expand?.part_id?.category === 'radio' ? 'Радіо' : 'Авто'}
+                  {inv.expand?.part_id?.category === 'radio' ? t('Радіо') : t('Авто')}
                 </Badge>
               </div>
             </Link>
@@ -84,7 +86,7 @@ export default function HomePage() {
       )}
 
       {query && !loading && results.length === 0 && (
-        <p className="text-center text-muted-foreground py-8">Нічого не знайдено</p>
+        <p className="text-center text-muted-foreground py-8">{t('Нічого не знайдено')}</p>
       )}
 
       {!query && (
@@ -92,13 +94,13 @@ export default function HomePage() {
           <Link href="/parts/new">
             <div className="border rounded-xl p-4 text-center hover:bg-accent transition-colors">
               <Package size={28} className="mx-auto mb-2 text-primary" />
-              <div className="font-medium text-sm">Нова деталь</div>
+              <div className="font-medium text-sm">{t('Нова деталь')}</div>
             </div>
           </Link>
           <Link href="/scan">
             <div className="border rounded-xl p-4 text-center hover:bg-accent transition-colors">
               <ScanLine size={28} className="mx-auto mb-2 text-primary" />
-              <div className="font-medium text-sm">Сканувати QR</div>
+              <div className="font-medium text-sm">{t('Сканувати QR')}</div>
             </div>
           </Link>
         </div>

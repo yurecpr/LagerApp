@@ -7,17 +7,22 @@ import { ArrowLeft, Package, ArrowDownCircle, ArrowUpCircle } from 'lucide-react
 import pb from '@/lib/pocketbase'
 import Link from 'next/link'
 import TransactionDialog from '@/components/TransactionDialog'
+import LocationDialog from '@/components/LocationDialog'
+import DeleteCatalogButton from '@/components/DeleteCatalogButton'
+import { useLanguage } from '@/lib/i18n'
 
-type Location = { id: string; name: string; notes: string }
+type Location = { id: string; name: string; notes: string; qr_code: string }
 type Inventory = { id: string; qty: number; expand: { part_id: { id: string; name: string; article: string; category: string; unit: string } } }
 type DialogState = { type: 'incoming' | 'outgoing'; invId: string; partId: string; partName: string; currentQty: number } | null
 
 export default function LocationDetailPage() {
+  const { t } = useLanguage()
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const [location, setLocation] = useState<Location | null>(null)
   const [inventory, setInventory] = useState<Inventory[]>([])
   const [dialog, setDialog] = useState<DialogState>(null)
+  const [editing, setEditing] = useState(false)
 
   const load = useCallback(() => {
     pb.collection('locations').getOne<Location>(id, { requestKey: null }).then(setLocation).catch(() => router.push('/locations'))
@@ -28,21 +33,24 @@ export default function LocationDetailPage() {
 
   useEffect(() => { load() }, [load])
 
-  if (!location) return <div className="p-4 pt-8 text-center text-muted-foreground">Завантаження...</div>
+  if (!location) return <div className="p-4 pt-8 text-center text-muted-foreground">{t('Завантаження...')}</div>
 
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center gap-3 pt-4">
         <Link href="/locations"><ArrowLeft size={20} /></Link>
         <h1 className="text-xl font-bold font-mono flex-1">{location.name}</h1>
+        <Button size="sm" variant="outline" onClick={() => setEditing(true)}>{t('Редагувати')}</Button>
+        <DeleteCatalogButton collection="locations" id={id} name={location.name} />
       </div>
 
       {location.notes && <p className="text-sm text-muted-foreground">{location.notes}</p>}
+      {editing && <LocationDialog location={location} onClose={() => setEditing(false)} onDone={load} />}
 
       <div>
-        <h2 className="font-semibold mb-2 flex items-center gap-2"><Package size={16} />Вміст комірки</h2>
+        <h2 className="font-semibold mb-2 flex items-center gap-2"><Package size={16} />{t('Вміст комірки')}</h2>
         {inventory.length === 0 ? (
-          <p className="text-muted-foreground text-sm text-center py-8">Комірка порожня</p>
+          <p className="text-muted-foreground text-sm text-center py-8">{t('Комірка порожня')}</p>
         ) : (
           <div className="space-y-2">
             {inventory.map(inv => (
@@ -87,4 +95,3 @@ export default function LocationDetailPage() {
     </div>
   )
 }
-

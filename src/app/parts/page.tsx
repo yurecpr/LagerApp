@@ -6,11 +6,14 @@ import { Badge } from '@/components/ui/badge'
 import { Search, Plus, Package, MapPin } from 'lucide-react'
 import pb from '@/lib/pocketbase'
 import Link from 'next/link'
+import PartPhoto from '@/components/PartPhoto'
+import { useLanguage } from '@/lib/i18n'
 
 type Part = { id: string; name: string; article: string; category: string; photo: string; collectionId: string }
 type Inventory = { id: string; part_id: string; qty: number; expand: { location_id: { name: string } } }
 
 export default function PartsPage() {
+  const { t } = useLanguage()
   const [parts, setParts] = useState<Part[]>([])
   const [inventory, setInventory] = useState<Inventory[]>([])
   const [query, setQuery] = useState('')
@@ -41,34 +44,31 @@ export default function PartsPage() {
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center justify-between pt-4">
-        <h1 className="text-xl font-bold">Деталі</h1>
+        <h1 className="text-xl font-bold">{t('Деталі')}</h1>
         <Link href="/parts/new">
-          <Button size="sm"><Plus size={16} className="mr-1" />Нова</Button>
+          <Button size="sm"><Plus size={16} className="mr-1" />{t('Нова')}</Button>
         </Link>
       </div>
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
-        <Input className="pl-9" placeholder="Пошук..." value={query} onChange={e => setQuery(e.target.value)} />
+        <Input className="pl-9" placeholder={t('Пошук...')} value={query} onChange={e => setQuery(e.target.value)} />
       </div>
 
       {loading ? (
-        <p className="text-center text-muted-foreground py-8">Завантаження...</p>
+        <p className="text-center text-muted-foreground py-8">{t('Завантаження...')}</p>
       ) : parts.length === 0 ? (
-        <p className="text-center text-muted-foreground py-8">Деталей немає</p>
+        <p className="text-center text-muted-foreground py-8">{t('Деталей немає')}</p>
       ) : (
         <div className="space-y-2">
           {parts.map(part => {
             const qty = getQty(part.id)
             const cell = getCell(part.id)
-            const photoUrl = part.photo
-              ? `${process.env.NEXT_PUBLIC_POCKETBASE_URL}/api/files/${part.collectionId}/${part.id}/${part.photo}?thumb=80x80`
-              : null
             return (
               <Link key={part.id} href={`/parts/${part.id}`}>
                 <div className="border rounded-xl p-3 flex items-center gap-3 hover:bg-accent transition-colors">
-                  {photoUrl ? (
-                    <img src={photoUrl} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                  {part.photo ? (
+                    <PartPhoto part={part} thumb="80x80" className="w-12 h-12 rounded-lg object-cover shrink-0" />
                   ) : (
                     <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center shrink-0">
                       <Package size={20} className="text-muted-foreground" />
